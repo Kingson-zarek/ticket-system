@@ -1,0 +1,50 @@
+# ==========================================
+# 客服工单系统 · 仓库根级忽略规则
+# ==========================================
+# 说明：后端子目录里已有 Spring Initializr 生成的 .gitignore，
+#       这个文件负责前端 + 全局规则。
+
+# ---------- Java / Maven ----------
+target/
+*.class
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# ---------- IntelliJ IDEA ----------
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ---------- VS Code ----------
+.vscode/
+!.vscode/extensions.json
+
+# ---------- 前端 ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+coverage/
+
+# ---------- 日志 ----------
+*.log
+logs/
+
+# ---------- 系统文件 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 本地敏感配置（不进仓库） ----------
+application-local.properties
+application-local.yml
+application-dev-local.yml
+.env
+.env.local
+*.pem
