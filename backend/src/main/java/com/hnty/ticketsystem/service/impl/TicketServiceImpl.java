@@ -1,6 +1,7 @@
 package com.hnty.ticketsystem.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hnty.ticketsystem.common.BizException;
@@ -23,11 +24,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,6 +42,14 @@ import java.util.stream.Stream;
  */
 @Service
 public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> implements TicketService {
+
+
+    private static final Map<String, Set<String>> TRANSITIONS = Map.of(
+            TicketStatus.OPEN, Set.of(TicketStatus.PROCESSING),
+            TicketStatus.PROCESSING, Set.of(TicketStatus.RESOLVED, TicketStatus.CLOSED),
+            TicketStatus.RESOLVED, Set.of(TicketStatus.PROCESSING, TicketStatus.CLOSED),
+            TicketStatus.CLOSED, Set.of()
+    );
 
     @Autowired
     private UserMapper userMapper;
@@ -172,6 +183,68 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         update.setId(id);
         update.setAssigneeId(assigneeId);
         baseMapper.updateById(update);
+    }
+
+    @Override
+    public void transStatus(Long id, String status) {
+        CurrentUser currentUser = UserContext.get();
+        if (currentUser == null) {
+            throw new BizException(401, "用户未登录");
+        }
+        if (!TicketStatus.CLOSED.equals(status) && !TicketStatus.OPEN.equals(status)
+                && !TicketStatus.PROCESSING.equals(status) && !TicketStatus.RESOLVED.equals(status)) {
+            throw new BizException(4001, "目标状态不合法");
+        }
+        Ticket ticket = baseMapper.selectById(id);
+        if (ticket == null) {
+            throw new BizException(4001,"工单不存在");
+        }
+        if (!currentUser.getUserId().equals(ticket.getCreatedBy()) && !currentUser.getUserId().equals(ticket.getAssigneeId())) {
+            throw new BizException(403,"没有权限修改");
+        }
+        Set<String> allowed = TRANSITIONS.getOrDefault(ticket.getStatus(), Set.of());
+        if (!allowed.contains(status)) {
+            throw new BizException(4001, "不能从 " + ticket.getStatus() + " 流转到 " + status);
+        }
+        boolean isCreator  = currentUser.getUserId().equals(ticket.getCreatedBy());
+        boolean isAssignee = currentUser.getUserId().equals(ticket.getAssigneeId());
+
+        // 状态机已经保证只剩这五种流转，这里只判断谁有资格操作
+        if (TicketStatus.PROCESSING.equals(status) && TicketStatus.OPEN.equals(ticket.getStatus())) {
+            // 接单只能由当前处理人操作
+            if (!isAssignee || !Role.AFTERSALES.equals(currentUser.getRole())) {
+                throw new BizException(403, "只有当前处理人可以接单");
+            }
+        } else if (TicketStatus.RESOLVED.equals(status) && TicketStatus.PROCESSING.equals(ticket.getStatus())) {
+            // 标记解决也只能由当前处理人操作
+            if (!isAssignee || !Role.AFTERSALES.equals(currentUser.getRole())) {
+                throw new BizException(403, "只有当前处理人可以标记解决");
+            }
+        } else if (TicketStatus.CLOSED.equals(status) && TicketStatus.PROCESSING.equals(ticket.getStatus())) {
+            // 处理中直接关闭，提单人或处理人都可以，前面的参与人校验已经拦过外人
+        } else if (TicketStatus.PROCESSING.equals(status) && TicketStatus.RESOLVED.equals(ticket.getStatus())) {
+            // 客户反馈没解决，只有提单人能退回
+            if (!isCreator || !Role.PRESALES.equals(currentUser.getRole())) {
+                throw new BizException(403, "只有提单人可以退回");
+            }
+        } else if (TicketStatus.CLOSED.equals(status) && TicketStatus.RESOLVED.equals(ticket.getStatus())) {
+            // 确认解决后关闭，只有提单人能操作
+            if (!isCreator || !Role.PRESALES.equals(currentUser.getRole())) {
+                throw new BizException(403, "只有提单人可以关闭");
+            }
+        }
+        // 进入已解决时记录时间，退回处理中要清掉，不然统计会把它算成已解决
+        LambdaUpdateWrapper<Ticket> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Ticket::getId, id).set(Ticket::getStatus, status);
+        if (TicketStatus.RESOLVED.equals(status)) {
+            updateWrapper.set(Ticket::getResolvedAt, LocalDateTime.now());
+        }
+        if (TicketStatus.RESOLVED.equals(ticket.getStatus())
+                && TicketStatus.PROCESSING.equals(status)) {
+            // updateById 会忽略 null 字段，清空只能走 UpdateWrapper
+            updateWrapper.set(Ticket::getResolvedAt, null);
+        }
+        baseMapper.update(updateWrapper);
     }
 
     /**

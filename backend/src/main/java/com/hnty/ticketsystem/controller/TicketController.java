@@ -5,6 +5,7 @@ import com.hnty.ticketsystem.common.Result;
 import com.hnty.ticketsystem.dto.TicketAssignRequest;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
 import com.hnty.ticketsystem.dto.TicketQueryRequest;
+import com.hnty.ticketsystem.dto.TicketStatusRequest;
 import com.hnty.ticketsystem.service.TicketService;
 import com.hnty.ticketsystem.vo.PageVo;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
@@ -44,6 +45,12 @@ public class TicketController {
     @PutMapping("/{id}/assign")
     public Result<Void> assign(@PathVariable Long id, @Valid @RequestBody TicketAssignRequest request){
         ticketService.assign(id,request.getAssigneeId());
+        return Result.ok();
+    }
+
+    @PutMapping("/{id}/status")
+    public Result<Void> transStatus(@PathVariable Long id, @Valid @RequestBody TicketStatusRequest request){
+        ticketService.transStatus(id,request.getStatus());
         return Result.ok();
     }
 

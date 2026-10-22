@@ -30,4 +30,6 @@ public interface TicketService extends IService<Ticket> {
     PageVo<TicketVo> list(TicketQueryRequest request);
 
     void assign(Long id, Long assigneeId);
+
+    void transStatus(Long id, String status);
 }
