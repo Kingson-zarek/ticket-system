@@ -32,4 +32,6 @@ public interface TicketService extends IService<Ticket> {
     void assign(Long id, Long assigneeId);
 
     void transStatus(Long id, String status);
+
+    void delete(Long id);
 }

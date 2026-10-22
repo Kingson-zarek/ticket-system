@@ -54,6 +54,11 @@ public class TicketController {
         return Result.ok();
     }
 
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id){
+        ticketService.delete(id);
+        return Result.ok();
+    }
 
 
 }

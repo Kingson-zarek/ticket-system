@@ -247,6 +247,25 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         baseMapper.update(updateWrapper);
     }
 
+    @Override
+    public void delete(Long id) {
+        CurrentUser currentUser = UserContext.get();
+        if (currentUser == null) {
+            throw new BizException(401, "用户未登录");
+        }
+        Ticket ticket = baseMapper.selectById(id);
+        if (ticket == null) {
+            throw new BizException(4001,"工单不存在");
+        }
+        if (!currentUser.getUserId().equals(ticket.getCreatedBy())) {
+            throw new BizException(403,"没有权限删除");
+        }
+        if (TicketStatus.CLOSED.equals(ticket.getStatus())) {
+            throw new BizException(4001,"该工单已完成不可删除");
+        }
+        baseMapper.deleteById(id);
+    }
+
     /**
      * 处理人必须是存在的、启用的售后
      * 建单和以后改派都要用这段，抽出来
