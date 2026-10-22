@@ -9,6 +9,7 @@ import com.hnty.ticketsystem.mapper.UserMapper;
 import com.hnty.ticketsystem.security.UserContext;
 import com.hnty.ticketsystem.util.JwtUtil;
 import com.hnty.ticketsystem.vo.LoginVo;
+import com.hnty.ticketsystem.vo.UserInfoVo;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -51,11 +52,22 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public Result<LoginVo> me() {
-        LoginVo loginVo = new LoginVo();
-        loginVo.setUserId(UserContext.userId());
-        loginVo.setRole(UserContext.role());
-        return Result.ok(loginVo);
+    public Result<UserInfoVo> me() {
+        Long userId = UserContext.userId();
+        if (userId == null) {
+            throw new BizException(401, "用户未登录");
+        }
+
+        User user = userMapper.selectById(userId);
+        if (user == null || !Integer.valueOf(1).equals(user.getEnabled())) {
+            throw new BizException(401, "用户不存在或已被禁用");
+        }
+
+        UserInfoVo vo = new UserInfoVo();
+        vo.setId(user.getId());
+        vo.setNickname(user.getNickname());
+        vo.setRole(user.getRole());
+        return Result.ok(vo);
     }
 
 }
