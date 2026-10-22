@@ -28,4 +28,6 @@ public interface TicketService extends IService<Ticket> {
     TicketVo getTicketById(Long id);
 
     PageVo<TicketVo> list(TicketQueryRequest request);
+
+    void assign(Long id, Long assigneeId);
 }

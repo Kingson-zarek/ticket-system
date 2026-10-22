@@ -148,6 +148,32 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         return PageVo.of(page.getTotal(),list);
     }
 
+    @Override
+    public void assign(Long id, Long assigneeId) {
+        CurrentUser currentUser = UserContext.get();
+        if (currentUser == null) {
+            throw new BizException(401, "用户未登录");
+        }
+        if (!Role.PRESALES.equals(currentUser.getRole())) {
+            throw new BizException(403,"没有权限修改");
+        }
+        Ticket ticket = baseMapper.selectById(id);
+        if (ticket == null) {
+            throw new BizException(4001,"工单不存在");
+        }
+        if (!currentUser.getUserId().equals(ticket.getCreatedBy())) {
+            throw new BizException(403, "只能改派自己创建的工单");
+        }
+        if (TicketStatus.CLOSED.equals(ticket.getStatus())) {
+            throw new BizException(4001,"工单已关闭");
+        }
+        checkAssignee(assigneeId);
+        Ticket update = new Ticket();
+        update.setId(id);
+        update.setAssigneeId(assigneeId);
+        baseMapper.updateById(update);
+    }
+
     /**
      * 处理人必须是存在的、启用的售后
      * 建单和以后改派都要用这段，抽出来

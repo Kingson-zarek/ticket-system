@@ -2,6 +2,7 @@ package com.hnty.ticketsystem.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hnty.ticketsystem.common.Result;
+import com.hnty.ticketsystem.dto.TicketAssignRequest;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
 import com.hnty.ticketsystem.dto.TicketQueryRequest;
 import com.hnty.ticketsystem.service.TicketService;
@@ -38,6 +39,12 @@ public class TicketController {
     @GetMapping
     public Result<PageVo<TicketVo>> list(TicketQueryRequest request){
         return Result.ok(ticketService.list(request));
+    }
+
+    @PutMapping("/{id}/assign")
+    public Result<Void> assign(@PathVariable Long id, @Valid @RequestBody TicketAssignRequest request){
+        ticketService.assign(id,request.getAssigneeId());
+        return Result.ok();
     }
 
 
