@@ -1,8 +1,11 @@
 package com.hnty.ticketsystem.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hnty.ticketsystem.common.Result;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
+import com.hnty.ticketsystem.dto.TicketQueryRequest;
 import com.hnty.ticketsystem.service.TicketService;
+import com.hnty.ticketsystem.vo.PageVo;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
 import com.hnty.ticketsystem.vo.TicketVo;
 import jakarta.validation.Valid;
@@ -31,4 +34,12 @@ public class TicketController {
     public Result<TicketVo> getTicketById(@PathVariable Long id) {
         return Result.ok(ticketService.getTicketById(id));
     }
+
+    @GetMapping
+    public Result<PageVo<TicketVo>> list(TicketQueryRequest request){
+        return Result.ok(ticketService.list(request));
+    }
+
+
+
 }

@@ -1,11 +1,14 @@
 package com.hnty.ticketsystem.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hnty.ticketsystem.common.BizException;
 import com.hnty.ticketsystem.common.Role;
 import com.hnty.ticketsystem.common.TicketPriority;
 import com.hnty.ticketsystem.common.TicketStatus;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
+import com.hnty.ticketsystem.dto.TicketQueryRequest;
 import com.hnty.ticketsystem.entity.Ticket;
 import com.hnty.ticketsystem.entity.User;
 import com.hnty.ticketsystem.mapper.TicketMapper;
@@ -13,13 +16,20 @@ import com.hnty.ticketsystem.mapper.UserMapper;
 import com.hnty.ticketsystem.security.CurrentUser;
 import com.hnty.ticketsystem.security.UserContext;
 import com.hnty.ticketsystem.service.TicketService;
+import com.hnty.ticketsystem.vo.PageVo;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
 import com.hnty.ticketsystem.vo.TicketVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 工单业务实现
@@ -89,6 +99,53 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         ticketVo.setCreatedByName(nicknameOf(ticket.getCreatedBy()));
         ticketVo.setAssigneeName(nicknameOf(ticket.getAssigneeId()));
         return ticketVo;
+    }
+
+    @Override
+    public PageVo<TicketVo> list(TicketQueryRequest request) {
+        CurrentUser currentUser = UserContext.get();
+        if (currentUser == null) {
+            throw new BizException(401, "用户未登录");
+        }
+        LambdaQueryWrapper<Ticket> queryWrapper = new LambdaQueryWrapper<>();
+        if (Role.PRESALES.equals(currentUser.getRole())) {
+            queryWrapper.eq(Ticket::getCreatedBy, currentUser.getUserId());
+        } else if (Role.AFTERSALES.equals(currentUser.getRole())) {
+            queryWrapper.eq(Ticket::getAssigneeId, currentUser.getUserId());
+        }else {
+            throw new BizException(403, "未知角色");
+        }
+        if (StringUtils.hasText(request.getStatus())){
+            queryWrapper.eq(Ticket::getStatus,request.getStatus());
+        }
+        if (StringUtils.hasText(request.getPriority())){
+            queryWrapper.eq(Ticket::getPriority,request.getPriority());
+        }
+        if (StringUtils.hasText(request.getKeyword())){
+            String keyword = request.getKeyword().trim();
+            queryWrapper.and(w -> w.like(Ticket::getTitle,keyword)
+                    .or().like(Ticket::getTicketNo,keyword));
+        }
+        queryWrapper.orderByDesc(Ticket::getCreatedAt).orderByDesc(Ticket::getId);
+        int current = request.getPage() == null ||request.getPage()<1 ? 1 : request.getPage();
+        int size  = request.getSize() == null ||request.getSize() < 1 ? 10 : Math.min(request.getSize(),100);
+        Page<Ticket> page = baseMapper.selectPage(new Page<>(current, size), queryWrapper);
+        List<TicketVo> list = page.getRecords().stream().map(TicketVo::from).toList();
+        List<Long> ids = page.getRecords().stream()
+                .flatMap(t -> Stream.of(t.getCreatedBy(), t.getAssigneeId()))
+                .filter(Objects::nonNull)
+                .distinct().toList();
+        if (!ids.isEmpty()){
+            List<User> users = userMapper.selectBatchIds(ids);
+            Map<Long, String> collect = users.stream().collect(Collectors.toMap(User::getId, User::getNickname));
+
+            for (TicketVo vo : list){
+                vo.setCreatedByName(collect.get(vo.getCreatedBy()));
+                vo.setAssigneeName(collect.get(vo.getAssigneeId()));
+            }
+
+        }
+        return PageVo.of(page.getTotal(),list);
     }
 
     /**

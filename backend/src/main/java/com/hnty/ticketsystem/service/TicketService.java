@@ -1,8 +1,11 @@
 package com.hnty.ticketsystem.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
+import com.hnty.ticketsystem.dto.TicketQueryRequest;
 import com.hnty.ticketsystem.entity.Ticket;
+import com.hnty.ticketsystem.vo.PageVo;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
 import com.hnty.ticketsystem.vo.TicketVo;
 
@@ -23,4 +26,6 @@ public interface TicketService extends IService<Ticket> {
     TicketCreateVo create(TicketCreateRequest ticketCreateRequest);
 
     TicketVo getTicketById(Long id);
+
+    PageVo<TicketVo> list(TicketQueryRequest request);
 }
