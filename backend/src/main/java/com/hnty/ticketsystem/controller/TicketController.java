@@ -4,12 +4,10 @@ import com.hnty.ticketsystem.common.Result;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
 import com.hnty.ticketsystem.service.TicketService;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
+import com.hnty.ticketsystem.vo.TicketVo;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 工单接口
@@ -27,5 +25,10 @@ public class TicketController {
     @PostMapping
     public Result<TicketCreateVo> createTicket(@Valid @RequestBody TicketCreateRequest ticketCreateRequest) {
         return Result.ok(ticketService.create(ticketCreateRequest));
+    }
+
+    @GetMapping("/{id}")
+    public Result<TicketVo> getTicketById(@PathVariable Long id) {
+        return Result.ok(ticketService.getTicketById(id));
     }
 }

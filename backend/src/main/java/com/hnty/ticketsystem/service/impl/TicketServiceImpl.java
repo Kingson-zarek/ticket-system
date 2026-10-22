@@ -14,6 +14,7 @@ import com.hnty.ticketsystem.security.CurrentUser;
 import com.hnty.ticketsystem.security.UserContext;
 import com.hnty.ticketsystem.service.TicketService;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
+import com.hnty.ticketsystem.vo.TicketVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -67,6 +68,29 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         return vo;
     }
 
+    @Override
+    public TicketVo getTicketById(Long id) {
+        CurrentUser user = UserContext.get();
+        if (user == null) {
+            throw new BizException(401, "用户未登录");
+        }
+        Ticket ticket = baseMapper.selectById(id);
+        if (ticket==null){
+            throw new BizException(4001,"工单不存在");
+        }
+        Long uid = user.getUserId();
+        boolean isAssignee = uid.equals(ticket.getAssigneeId());
+        boolean isCreator  = uid.equals(ticket.getCreatedBy());
+
+        if (!isAssignee && !isCreator) {
+            throw new BizException(403, "无权查看该工单");
+        }
+        TicketVo ticketVo = TicketVo.from(ticket);
+        ticketVo.setCreatedByName(nicknameOf(ticket.getCreatedBy()));
+        ticketVo.setAssigneeName(nicknameOf(ticket.getAssigneeId()));
+        return ticketVo;
+    }
+
     /**
      * 处理人必须是存在的、启用的售后
      * 建单和以后改派都要用这段，抽出来
@@ -77,5 +101,13 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 || !Integer.valueOf(1).equals(assignee.getEnabled())) {
             throw new BizException(4001, "处理人不存在或不可用");
         }
+    }
+
+    private String nicknameOf(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        User user = userMapper.selectById(userId);
+        return user == null ? null : user.getNickname();
     }
 }

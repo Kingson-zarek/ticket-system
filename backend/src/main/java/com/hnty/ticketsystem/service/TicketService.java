@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.hnty.ticketsystem.dto.TicketCreateRequest;
 import com.hnty.ticketsystem.entity.Ticket;
 import com.hnty.ticketsystem.vo.TicketCreateVo;
+import com.hnty.ticketsystem.vo.TicketVo;
 
 /**
  * 工单业务接口
@@ -20,4 +21,6 @@ public interface TicketService extends IService<Ticket> {
      * @return 新工单的 id 和工单号
      */
     TicketCreateVo create(TicketCreateRequest ticketCreateRequest);
+
+    TicketVo getTicketById(Long id);
 }
