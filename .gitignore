@@ -48,3 +48,6 @@ application-dev-local.yml
 .env
 .env.local
 *.pem
+
+# ---------- 本地计划文档 ----------
+每日任务.md
