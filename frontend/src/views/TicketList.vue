@@ -1,6 +1,13 @@
 <template>
-    <h1>工单列表</h1>
-    <p>共 {{total}} 条</p>
+    <div class="list-header">
+        <div>
+            <h1>工单列表</h1>
+        <p>共 {{total}} 条</p>
+        </div>
+        <el-button v-if="isPresales" type="primary" @click="router.push('/tickets/create')">
+            新建工单
+        </el-button>
+    </div>
     <el-table :data="tickets" border stripe @row-click="handleRowClick">
         <el-table-column prop="ticketNo" label="工单号" width="170"/>
         <el-table-column prop="title" label="标题" min-width="200"/>
@@ -41,6 +48,8 @@ import { useRouter } from 'vue-router';
     const page=ref(1)
     const size=ref(10)
     const router=useRouter()
+    const user = JSON.parse(localStorage.getItem('user') || {})
+    const isPresales = user.role ==='presales'
     const statusMap = {
         OPEN: '待处理',
         PROCESSING: '处理中',
@@ -104,6 +113,11 @@ import { useRouter } from 'vue-router';
 <style>
 .el-table__row {
   cursor: pointer;
+}
+.list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 </style>

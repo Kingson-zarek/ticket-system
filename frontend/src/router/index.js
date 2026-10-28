@@ -5,6 +5,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import Dashboard from '../views/Dashboard.vue'
 import TicketList from '../views/TicketList.vue'
 import TicketDetail from '../views/TicketDetail.vue'
+import TicketCreate from '../views/TicketCreate.vue'
 
 const router = createRouter({
     history:createWebHistory(),
@@ -22,6 +23,9 @@ const router = createRouter({
                 },
                 {
                     path:'tickets',component:TicketList
+                },
+                {
+                    path:'tickets/create',component:TicketCreate
                 },
                 {
                     path:'tickets/:id',component:TicketDetail

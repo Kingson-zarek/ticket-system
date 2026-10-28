@@ -11,6 +11,35 @@
     <el-card v-if="ticket">
         <h2>{{ ticket.title }}</h2>
         <p>工单号：{{ ticket.ticketNo }}</p>
+        <div class="actions">
+            <el-button v-if="ticket.status === 'OPEN' && isAssignee" type="primary" :loading="actionLoading" @click="changeStatus('PROCESSING')">
+                接单
+            </el-button>
+            <el-button v-if="ticket.status === 'PROCESSING' && isAssignee" type="primary" :loading="actionLoading" @click="changeStatus('RESOLVED')">
+                标记解决
+            </el-button>
+            <el-button v-if="canClose" :loading="actionLoading" @click="confirmClose">
+                关闭
+            </el-button>
+            <el-button v-if="ticket.status === 'RESOLVED' && isCreator && isPresales" :loading="actionLoading" @click="changeStatus('PROCESSING')">
+                退回处理中
+            </el-button>
+            <el-button v-if="ticket.status !== 'CLOSED' && isCreator && isPresales" @click="openAssign">
+                改派
+            </el-button>
+            <el-button v-if="ticket.status !== 'CLOSED' && isCreator" type="danger" @click="confirmDelete">
+                删除
+            </el-button>
+        </div>
+            <el-dialog v-model="assignVisible" title="改派处理人" width="360px">
+            <el-select v-model="assignId" placeholder="请选择处理人" style="width: 100%">
+                <el-option v-for="u in aftersales" :key="u.id" :label="u.nickname" :value="u.id"/>
+            </el-select>
+            <template #footer>
+                <el-button @click="assignVisible = false">取消</el-button>
+                <el-button type="primary" :loading="assigning" @click="submitAssign">确定</el-button>
+            </template>
+        </el-dialog>
         <p>
             状态：
             <el-tag :type="statusType(ticket.status)">
@@ -58,12 +87,14 @@
 </template>
 
 <script setup>
-import { useRoute } from 'vue-router';
-import { getTicket } from '../api/ticket'
-import { onMounted,ref } from 'vue';
+import { useRoute,useRouter } from 'vue-router';
+import { getTicket, updateStatus,deleteTicket,assignTicket } from '../api/ticket'
+import { computed,onMounted,ref } from 'vue';
 import {getComments,addComment} from '../api/comment.js'
-import { ElMessage } from 'element-plus';
+import { ElMessage,ElMessageBox } from 'element-plus';
+import { getAftersales } from '../api/user.js';
     const route=useRoute()
+    const router=useRouter()
     const id = route.params.id
     const ticket=ref(null)
     const loading=ref(true)
@@ -71,6 +102,20 @@ import { ElMessage } from 'element-plus';
     const errorMessage=ref('')
     const commentContent=ref('')
     const submitting=ref(false)
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const uid = user.userId
+    const isPresales = user.role === 'presales'
+    const isCreator = computed(()=> ticket.value?.createdBy === uid)
+    const isAssignee = computed(()=> ticket.value?.assigneeId === uid)
+    const actionLoading = ref(false)
+    const canClose = computed(()=>
+        (ticket.value?.status === 'PROCESSING' && (isCreator.value || isAssignee.value)) ||
+        (ticket.value?.status === 'RESOLVED' && isCreator.value && isPresales)
+    )
+    const assignVisible = ref(false)
+    const assignId = ref(null)
+    const aftersales = ref([])
+    const assigning = ref(false)
 
     const roleMap = {
         presales:'售前',
@@ -166,6 +211,76 @@ function priorityType(priority) {
             submitting.value=false
         }
     }
+    async function changeStatus(status){
+        actionLoading.value=true
+        try{
+            await updateStatus(id,status)
+            ElMessage.success("修改状态成功")
+            await loadTicket()
+        }catch(error){
+            console.error(error)
+        }finally{
+            actionLoading.value=false
+        }
+    }
+
+    async function confirmClose() {
+        try{
+            await ElMessageBox.confirm('关闭后不能再流转，确定关闭？','关闭确认',
+            { type: 'warning', confirmButtonText: '关闭', cancelButtonText: '取消'})
+        }catch{
+            return
+        }
+        await changeStatus('CLOSED')
+    }
+
+    async function openAssign() {
+        assignId.value = ticket.value?.assigneeId ?? null
+        assignVisible.value = true
+        try {
+            aftersales.value = await getAftersales()
+        } catch {
+            aftersales.value = []
+        }
+    }
+
+    async function submitAssign() {
+        if (!assignId.value) {
+            ElMessage.warning('请选择处理人')
+            return
+        }
+        assigning.value = true
+        try {
+            await assignTicket(id, assignId.value)
+            ElMessage.success('改派成功')
+            assignVisible.value = false
+            await loadTicket()
+        } catch (error) {
+            console.error(error)
+        } finally {
+            assigning.value = false
+        }
+    }
+
+    async function confirmDelete() {
+        try{
+            await ElMessageBox.confirm(`确定删除工单 ${ticket.value.ticketNo}？`,'删除确认',
+                {type: 'warning',confirmButtonText:'删除',cancelButtonText:'取消'}
+            )
+        }catch{
+            return
+        }
+        actionLoading.value=true
+        try{
+            await deleteTicket(id)
+            ElMessage.success('已删除')
+            router.push('/tickets')
+        }catch(error){
+            console.error(error)
+        }finally{
+            actionLoading.value=false
+        }
+    }
     onMounted(async() =>{
         await loadTicket()
         if(!errorMessage.value){
@@ -176,6 +291,12 @@ function priorityType(priority) {
 </script>
 
 <style>
+.actions {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+}
+
 .comment {
     padding: 12px 0;
     border-bottom: 1px solid #eee;
