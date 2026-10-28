@@ -75,6 +75,7 @@ onMounted(async()=>{
         aftersales.value = await getAftersales()
     }catch{
         aftersales.value = []
+        ElMessage.error('处理人加载失败，请刷新重试')
     }
 })
 </script>

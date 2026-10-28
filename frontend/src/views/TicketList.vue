@@ -8,35 +8,51 @@
             新建工单
         </el-button>
     </div>
-    <el-table :data="tickets" border stripe @row-click="handleRowClick">
-        <el-table-column prop="ticketNo" label="工单号" width="170"/>
-        <el-table-column prop="title" label="标题" min-width="200"/>
-        <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-                <el-tag :type="statusType(row.status)">
-                    {{ statusText(row.status) }}
-                </el-tag>
+    <div v-loading="loading" class="list-body">
+        <el-result v-if="errorMessage" icon="error" :title="errorMessage">
+            <template #extra>
+                <el-button type="primary" @click="loadTickets">重新加载</el-button>
             </template>
-        </el-table-column>
-        <el-table-column prop="priority" label="优先级" width="100">
-            <template #default="{ row }">
-                <el-tag :type="priorityType(row.priority)">
-                    {{ priorityText(row.priority) }}
-                </el-tag>
-            </template>
-        </el-table-column>
-        <el-table-column prop="assigneeName" label="处理人" width="120"/>
-        <el-table-column prop="createdAt" label="创建时间" width="180"/>
-    </el-table>
-    <el-pagination 
-        v-model:current-page="page"
-        v-model:page-size='size'
-        :total="total"
-        layout="prev,pager,next"
-        background
-        @current-change="loadTickets"
-        @size-change="handleSizeChange"
-    />
+        </el-result>
+        <template v-else>
+            <el-table
+                :data="tickets"
+                border
+                stripe
+                empty-text="暂无工单"
+                @row-click="handleRowClick"
+            >
+                <el-table-column prop="ticketNo" label="工单号" width="170"/>
+                <el-table-column prop="title" label="标题" min-width="200"/>
+                <el-table-column prop="status" label="状态" width="100">
+                    <template #default="{ row }">
+                        <el-tag :type="statusType(row.status)">
+                            {{ statusText(row.status) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="priority" label="优先级" width="100">
+                    <template #default="{ row }">
+                        <el-tag :type="priorityType(row.priority)">
+                            {{ priorityText(row.priority) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="assigneeName" label="处理人" width="120"/>
+                <el-table-column prop="createdAt" label="创建时间" width="180"/>
+            </el-table>
+            <el-pagination
+                v-if="total > 0"
+                v-model:current-page="page"
+                v-model:page-size="size"
+                :total="total"
+                layout="prev,pager,next"
+                background
+                @current-change="loadTickets"
+                @size-change="handleSizeChange"
+            />
+        </template>
+    </div>
 </template>
 
 <script setup>
@@ -47,8 +63,10 @@ import { useRouter } from 'vue-router';
     const tickets=ref([])
     const page=ref(1)
     const size=ref(10)
+    const loading=ref(false)
+    const errorMessage=ref('')
     const router=useRouter()
-    const user = JSON.parse(localStorage.getItem('user') || {})
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
     const isPresales = user.role ==='presales'
     const statusMap = {
         OPEN: '待处理',
@@ -91,13 +109,23 @@ import { useRouter } from 'vue-router';
         return priorityTypeMap[priority] || 'info'
 }
     async function loadTickets() {
-        const data = await getTickets({
-            page:page.value,
-            size:size.value
-        })
-        console.log(data)
-        total.value=data.total
-        tickets.value=data.records
+        loading.value = true
+        errorMessage.value = ''
+        try {
+            const data = await getTickets({
+                page: page.value,
+                size: size.value
+            })
+            total.value = data.total
+            tickets.value = data.records
+        } catch (error) {
+            console.error(error)
+            total.value = 0
+            tickets.value = []
+            errorMessage.value = '工单列表加载失败，请重试'
+        } finally {
+            loading.value = false
+        }
     }
     function handleSizeChange(){
         page.value=1
@@ -118,6 +146,9 @@ import { useRouter } from 'vue-router';
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+.list-body {
+    min-height: 200px;
 }
 
 </style>
