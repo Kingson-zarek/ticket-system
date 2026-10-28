@@ -45,6 +45,13 @@ router.beforeEach((to, from, next) => {
             next('/')
             return
         }
+        if (to.path === '/tickets/create') {
+            const user = JSON.parse(localStorage.getItem('user') || '{}')
+            if (user.role !== 'presales') {
+                next('/tickets')
+                return
+            }
+        }
         next()
 })
 

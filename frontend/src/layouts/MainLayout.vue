@@ -11,6 +11,7 @@
             <aside class="sidebar">
                 <RouterLink to="/">首页</RouterLink>
                 <RouterLink to="/tickets">工单列表</RouterLink>
+                <RouterLink v-if="isPresales" to="/tickets/create">创建工单</RouterLink>
             </aside>
 
             <main class="main">
@@ -25,6 +26,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
     const router = useRouter()
     const user = JSON.parse(localStorage.getItem('user')||'{}')
+    const isPresales = user.role === 'presales'
     function handleLogout(){
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -68,5 +70,23 @@ import { ElMessage } from 'element-plus';
 .main {
   flex: 1;
   padding: 20px;
+}
+@media (max-width: 768px) {
+    .body {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
+    .header {
+        padding: 0 12px;
+    }
+    .main {
+        padding: 12px;
+    }
 }
 </style>
