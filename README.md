@@ -131,6 +131,18 @@ npm install
 npm run dev
 ```
 
+若提示 `spawn EPERM`（受限环境里 Vite 探测网络驱动器会失败），在命令前加一行环境变量再跑：
+
+```bash
+NODE_OPTIONS="--require ../scripts/vite-exec-stub.cjs"
+```
+
+Windows PowerShell：
+
+```powershell
+$env:NODE_OPTIONS="--require ../scripts/vite-exec-stub.cjs"
+```
+
 浏览器打开 `http://localhost:5173`，`/api` 已代理到 8080。
 
 ### 测试账号
